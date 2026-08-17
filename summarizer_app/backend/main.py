@@ -11,13 +11,12 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "model")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Holds the loaded model/tokenizer so we only load them once at startup
 ml_models = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ---- startup: load model once ----
+    
     if not os.path.isdir(MODEL_DIR) or not os.listdir(MODEL_DIR):
         raise RuntimeError(
             f"No model files found in {MODEL_DIR}. "
@@ -36,17 +35,14 @@ async def lifespan(app: FastAPI):
 
     yield  # app runs here
 
-    # ---- shutdown: cleanup ----
     ml_models.clear()
 
 
 app = FastAPI(title="News Summarizer API", lifespan=lifespan)
 
-# Allow the frontend (served separately, e.g. via Live Server / a static host)
-# to call this API from the browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this to your actual frontend origin in production
+    allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -99,10 +95,6 @@ def summarize(req: SummarizeRequest):
     summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return SummarizeResponse(summary=summary)
 
-
-# Serve the frontend directly from FastAPI too (optional convenience):
-# with this, visiting http://localhost:8000/ opens the HTML page,
-# and it talks to /summarize on the same origin (no CORS issues).
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
