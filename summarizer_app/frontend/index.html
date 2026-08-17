@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Text Summarizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --primary: #4F46E5;
+    --primary-2: #6366F1;
+    --secondary: #06B6D4;
+    --bg: #0F172A;
+    --bg-2: #0B1220;
+    --card: #1E293B;
+    --card-2: rgba(30, 41, 59, 0.6);
+    --border: rgba(248, 250, 252, 0.08);
+    --text: #F8FAFC;
+    --text-dim: #94A3B8;
+    --success: #22C55E;
+    --danger: #F87171;
+    --radius: 18px;
+  }
+
+  [data-theme="light"] {
+    --bg: #F1F5F9;
+    --bg-2: #E2E8F0;
+    --card: #FFFFFF;
+    --card-2: rgba(255, 255, 255, 0.7);
+    --border: rgba(15, 23, 42, 0.08);
+    --text: #0F172A;
+    --text-dim: #64748B;
+  }
+
+  * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 10% -10%, rgba(79,70,229,0.18), transparent),
+      radial-gradient(ellipse 800px 500px at 100% 0%, rgba(6,182,212,0.14), transparent);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 80px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeUp 0.6s ease both; }
+  .fade-in.d1 { animation-delay: 0.05s; }
+  .fade-in.d2 { animation-delay: 0.12s; }
+  .fade-in.d3 { animation-delay: 0.2s; }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 32px 24px 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(79,70,229,0.35);
+    flex-shrink: 0;
+  }
+  .logo svg { width: 26px; height: 26px; }
+  .brand h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand p { margin: 2px 0 0; font-size: 13.5px; color: var(--text-dim); }
+
+  #themeToggle {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    backdrop-filter: blur(10px);
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+    flex-shrink: 0;
+  }
+  #themeToggle:hover { border-color: var(--primary-2); transform: translateY(-1px); }
+  #themeToggle svg { width: 20px; height: 20px; }
+
+  /* ---------- glass card base ---------- */
+  .card {
+    background: var(--card-2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    padding: 24px;
+  }
+
+  /* ---------- main grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin-top: 24px;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .panel-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .ghost-btn {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .ghost-btn:hover { color: var(--text); border-color: var(--primary-2); }
+  .ghost-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  textarea {
+    width: 100%;
+    min-height: 260px;
+    padding: 16px;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.6;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.35);
+    color: var(--text);
+    resize: vertical;
+  }
+  [data-theme="light"] textarea { background: rgba(15, 23, 42, 0.03); }
+  textarea::placeholder { color: var(--text-dim); }
+  textarea:focus {
+    outline: none;
+    border-color: var(--primary-2);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+  }
+
+  .char-count { margin-top: 10px; font-size: 12.5px; color: var(--text-dim); text-align: right; }
+
+  /* ---------- controls ---------- */
+  .controls-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  select {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+  [data-theme="light"] select { background: rgba(15, 23, 42, 0.03); }
+  select:focus { outline: none; border-color: var(--primary-2); }
+
+  .btn-gradient {
+    flex: 1;
+    min-width: 180px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 8px 24px rgba(79,70,229,0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+  .btn-gradient:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(79,70,229,0.45); }
+  .btn-gradient:active:not(:disabled) { transform: translateY(0); }
+  .btn-gradient:disabled { opacity: 0.7; cursor: wait; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.visible { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- output panel ---------- */
+  .output-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn:hover:not(:disabled) { color: var(--text); border-color: var(--primary-2); }
+  .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .output-body {
+    min-height: 260px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.35);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-theme="light"] .output-body { background: rgba(15, 23, 42, 0.03); }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-dim);
+    gap: 10px;
+    padding: 20px;
+  }
+  .empty-state svg { width: 34px; height: 34px; opacity: 0.5; }
+  .empty-state p { margin: 0; font-size: 13.5px; }
+
+  #summaryText {
+    flex: 1;
+    margin: 0 0 14px;
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--text);
+    display: none;
+  }
+  #summaryText.visible { display: block; }
+
+  .output-meta {
+    display: none;
+    gap: 18px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .output-meta.visible { display: flex; }
+  .output-meta span { display: flex; align-items: center; gap: 6px; }
+
+  .error {
+    color: var(--danger);
+    font-size: 13.5px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(248,113,113,0.35);
+    background: rgba(248,113,113,0.08);
+    border-radius: 10px;
+    display: none;
+  }
+  .error.visible { display: block; }
+
+  /* ---------- stats ---------- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 26px;
+  }
+  @media (max-width: 760px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .stat-card {
+    text-align: center;
+    padding: 20px 12px;
+  }
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .stat-card .label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ---------- features ---------- */
+  .section-title {
+    margin: 56px 0 20px;
+    text-align: center;
+  }
+  .section-title h2 { margin: 0; font-size: 22px; font-weight: 800; }
+  .section-title p { margin: 6px 0 0; font-size: 13.5px; color: var(--text-dim); }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .features-grid { grid-template-columns: 1fr; } }
+
+  .feature-card {
+    padding: 22px 18px;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .feature-card:hover { transform: translateY(-4px); border-color: var(--primary-2); }
+  .feature-icon {
+    width: 42px; height: 42px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(79,70,229,0.22), rgba(6,182,212,0.22));
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .feature-icon svg { width: 20px; height: 20px; color: var(--secondary); }
+  .feature-card h3 { margin: 0 0 6px; font-size: 14.5px; font-weight: 700; }
+  .feature-card p { margin: 0; font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .socials { display: flex; gap: 10px; }
+  .socials a {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .socials a:hover { color: var(--text); border-color: var(--primary-2); }
+  .socials svg { width: 16px; height: 16px; }
+
+  /* ---------- toast ---------- */
+  #toastHost {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 50;
+  }
+  .toast {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: toastIn 0.25s ease;
+    min-width: 220px;
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error { border-left: 3px solid var(--danger); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</head>
+<body>
+
+<header class="fade-in">
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3a4 4 0 0 0-4 4 3.5 3.5 0 0 0-2 6.2A3.5 3.5 0 0 0 8 19a4 4 0 0 0 4 2 4 4 0 0 0 4-2 3.5 3.5 0 0 0 2-5.8A3.5 3.5 0 0 0 16 7a4 4 0 0 0-4-4Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M12 3v18M8 8.5h8M8 15.5h8" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>AI Text Summarizer</h1>
+      <p>Transform long articles into concise summaries instantly.</p>
+    </div>
+  </div>
+  <button id="themeToggle" aria-label="Toggle light and dark mode">
+    <svg id="themeIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+    </svg>
+  </button>
+</header>
+
+<div class="wrap">
+
+  <div class="grid">
+    <!-- Input panel -->
+    <section class="card fade-in d1">
+      <div class="panel-head">
+        <h2>Original Text</h2>
+        <button class="ghost-btn" id="clearBtn">Clear</button>
+      </div>
+      <textarea id="article" placeholder="Paste your article here..."></textarea>
+      <div class="char-count"><span id="charCount">0</span> characters</div>
+
+      <div class="controls-row">
+        <select id="lengthSelect">
+          <option value="short">Short</option>
+          <option value="medium" selected>Medium</option>
+          <option value="detailed">Detailed</option>
+        </select>
+        <button class="btn-gradient" id="go">
+          <span class="spinner" id="spinner"></span>
+          <span id="goLabel">Generate Summary</span>
+        </button>
+      </div>
+
+      <p class="error" id="error"></p>
+    </section>
+
+    <!-- Output panel -->
+    <section class="card fade-in d2">
+      <div class="panel-head">
+        <h2>Summary</h2>
+        <div class="output-actions">
+          <button class="icon-btn" id="copyBtn" disabled aria-label="Copy summary">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V6a2 2 0 0 1 2-2h9" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
+          <button class="icon-btn" id="downloadBtn" disabled aria-label="Download summary">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="output-body">
+        <div class="empty-state" id="emptyState">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <p>Your summary will appear here.</p>
+        </div>
+        <p id="summaryText"></p>
+        <div class="output-meta" id="outputMeta">
+          <span id="metaWords">0 words</span>
+          <span id="metaReading">0 min read</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid fade-in d3">
+    <div class="card stat-card">
+      <div class="value" id="statOriginal">—</div>
+      <div class="label">Original Words</div>
+    </div>
+    <div class="card stat-card">
+      <div class="value" id="statSummary">—</div>
+      <div class="label">Summary Words</div>
+    </div>
+    <div class="card stat-card">
+      <div class="value" id="statRatio">—</div>
+      <div class="label">Compression Ratio</div>
+    </div>
+    <div class="card stat-card">
+      <div class="value" id="statTime">—</div>
+      <div class="label">Processing Time</div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="section-title">
+    <h2>Why this summarizer</h2>
+    <p>A lightweight, T5-powered engine built for speed and clarity.</p>
+  </div>
+  <div class="features-grid">
+    <div class="card feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+      <h3>Fast Processing</h3>
+      <p>Summaries return in seconds, even on modest hardware.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 7V5a4 4 0 0 1 8 0v2M9 12h.01M15 12h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <h3>AI Powered</h3>
+      <p>Fine-tuned T5 sequence-to-sequence model under the hood.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg></div>
+      <h3>Accurate Summaries</h3>
+      <p>Beam search decoding keeps the core meaning intact.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <h3>Multiple Length Options</h3>
+      <p>Choose short, medium, or detailed output to fit your need.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Built with HTML, CSS, JavaScript &amp; Transformers</span>
+    <div class="socials">
+      <a href="#" aria-label="GitHub" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 0 0-3.16 19.5c.5.1.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.4 9.4 0 0 1 5 0c1.91-1.3 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.69 0 3.85-2.34 4.7-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .26.18.58.69.48A10 10 0 0 0 12 2Z" fill="currentColor"/></svg>
+      </a>
+      <a href="#" aria-label="LinkedIn" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 10v6.2M7.5 7.6v.01M12 16.2v-3.6c0-1.3.9-2.2 2.1-2.2 1.2 0 1.9.8 1.9 2.2v3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </a>
+    </div>
+  </footer>
+</div>
+
+<div id="toastHost"></div>
+
+<script>
+  // If the frontend is served BY FastAPI (StaticFiles mount in main.py),
+  // this same-origin path works with no CORS setup needed.
+  // If you serve the frontend separately, change this to the backend's full URL.
+  const API_URL = "/summarize";
+
+  const LENGTH_PRESETS = {
+    short:    { max_length: 60,  min_length: 15, num_beams: 4 },
+    medium:   { max_length: 100, min_length: 25, num_beams: 5 },
+    detailed: { max_length: 160, min_length: 50, num_beams: 6 },
+  };
+
+  const articleEl = document.getElementById("article");
+  const charCount = document.getElementById("charCount");
+  const clearBtn = document.getElementById("clearBtn");
+  const lengthSelect = document.getElementById("lengthSelect");
+  const goBtn = document.getElementById("go");
+  const goLabel = document.getElementById("goLabel");
+  const spinner = document.getElementById("spinner");
+  const errorEl = document.getElementById("error");
+
+  const emptyState = document.getElementById("emptyState");
+  const summaryText = document.getElementById("summaryText");
+  const outputMeta = document.getElementById("outputMeta");
+  const metaWords = document.getElementById("metaWords");
+  const metaReading = document.getElementById("metaReading");
+  const copyBtn = document.getElementById("copyBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
+
+  const statOriginal = document.getElementById("statOriginal");
+  const statSummary = document.getElementById("statSummary");
+  const statRatio = document.getElementById("statRatio");
+  const statTime = document.getElementById("statTime");
+
+  const themeToggle = document.getElementById("themeToggle");
+  const toastHost = document.getElementById("toastHost");
+
+  let currentTheme = "dark";
+  themeToggle.addEventListener("click", () => {
+    currentTheme = currentTheme === "dark" ? "light" : "dark";
+    if (currentTheme === "light") {
+      document.body.setAttribute("data-theme", "light");
+    } else {
+      document.body.removeAttribute("data-theme");
+    }
+  });
+
+  function showToast(message, type = "success") {
+    const el = document.createElement("div");
+    el.className = "toast " + type;
+    el.textContent = message;
+    toastHost.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transition = "opacity 0.25s ease";
+      setTimeout(() => el.remove(), 250);
+    }, 2600);
+  }
+
+  function wordCount(str) {
+    const trimmed = str.trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }
+
+  articleEl.addEventListener("input", () => {
+    charCount.textContent = articleEl.value.length;
+  });
+
+  clearBtn.addEventListener("click", () => {
+    articleEl.value = "";
+    charCount.textContent = "0";
+    errorEl.classList.remove("visible");
+    resetOutput();
+  });
+
+  function resetOutput() {
+    summaryText.textContent = "";
+    summaryText.classList.remove("visible");
+    outputMeta.classList.remove("visible");
+    emptyState.style.display = "flex";
+    copyBtn.disabled = true;
+    downloadBtn.disabled = true;
+    statOriginal.textContent = "—";
+    statSummary.textContent = "—";
+    statRatio.textContent = "—";
+    statTime.textContent = "—";
+  }
+
+  goBtn.addEventListener("click", async () => {
+    const text = articleEl.value.trim();
+    errorEl.classList.remove("visible");
+
+    if (text.length < 20) {
+      errorEl.textContent = "Paste a longer article — at least 20 characters.";
+      errorEl.classList.add("visible");
+      return;
+    }
+
+    const preset = LENGTH_PRESETS[lengthSelect.value];
+    goBtn.disabled = true;
+    spinner.classList.add("visible");
+    goLabel.textContent = "Summarizing…";
+
+    const startTime = performance.now();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, ...preset }),
+      });
+
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `Request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(1);
+
+      const srcWords = wordCount(text);
+      const outWords = wordCount(data.summary);
+      const ratio = srcWords > 0 ? Math.max(Math.round((1 - outWords / srcWords) * 100), 0) : 0;
+      const readingMin = Math.max(Math.ceil(outWords / 200), 1);
+
+      emptyState.style.display = "none";
+      summaryText.textContent = data.summary;
+      summaryText.classList.add("visible");
+      metaWords.textContent = outWords + " words";
+      metaReading.textContent = readingMin + " min read";
+      outputMeta.classList.add("visible");
+      copyBtn.disabled = false;
+      downloadBtn.disabled = false;
+
+      statOriginal.textContent = srcWords;
+      statSummary.textContent = outWords;
+      statRatio.textContent = ratio + "%";
+      statTime.textContent = elapsedSec + "s";
+
+      showToast("Summary generated", "success");
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add("visible");
+      showToast(err.message, "error");
+    } finally {
+      goBtn.disabled = false;
+      spinner.classList.remove("visible");
+      goLabel.textContent = "Generate Summary";
+    }
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(summaryText.textContent);
+      showToast("Copied to clipboard", "success");
+    } catch (e) {
+      showToast("Copy failed", "error");
+    }
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    const blob = new Blob([summaryText.textContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "summary.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Summary downloaded", "success");
+  });
+</script>
+
+</body>
+</html>
